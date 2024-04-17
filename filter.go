@@ -1,58 +1,44 @@
-package sieve
+package filter
 
 import (
 	"bufio"
 	"io"
-	"net/http"
 	"os"
-	"strings"
 	"sync"
 )
 
 // ==== 检测关键词 =====
-type Sieve struct {
+type Filter struct {
 	mu   sync.RWMutex
 	trie *node
 }
 
-func New() *Sieve {
-	s := &Sieve{
+func New() *Filter {
+	s := &Filter{
 		trie: &node{},
 	}
 	return s
 }
 
 // 简单添加关键词
-func (s *Sieve) Add(words []string) (fail []string) {
+func (s *Filter) Add(words []string) (fail []string) {
 	return s.add(words, 0, true)
 }
 
 // 从文本添加关键词，打标签并设定是否自动替换为*
-func (s *Sieve) AddByFile(filename string, tag uint8, autoReplace bool) (fails []string, err error) {
-	const delim = '\n'
+func (s *Filter) AddByFile(filename string, tag uint8, autoReplace bool) (fails []string, err error) {
 	words := make([]string, 0, 2048)
 
-	var reader io.Reader
 	// 远程文件
-	if strings.HasPrefix(filename, "http") {
-		resp, err := http.Get(filename)
-		if err != nil {
-			return nil, err
-		}
-		reader = resp.Body
-		defer resp.Body.Close()
-	} else {
-		f, err := os.Open(filename)
-		if err != nil {
-			return nil, err
-		}
-		reader = f
-		defer f.Close()
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
 	}
+	defer f.Close()
 
-	br := bufio.NewReader(reader)
+	br := bufio.NewReader(f)
 	for {
-		b, err := br.ReadBytes(delim)
+		b, err := br.ReadBytes('\n')
 		words = append(words, string(b))
 		if err == io.EOF {
 			break
@@ -65,7 +51,7 @@ func (s *Sieve) AddByFile(filename string, tag uint8, autoReplace bool) (fails [
 }
 
 // 移除关键词
-func (s *Sieve) Remove(words []string) {
+func (s *Filter) Remove(words []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -75,7 +61,7 @@ func (s *Sieve) Remove(words []string) {
 }
 
 // 返回文本中第一个关键词及其标签
-func (s *Sieve) Search(text string) (string, uint8) {
+func (s *Filter) Search(text string) (string, uint8) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -85,7 +71,7 @@ func (s *Sieve) Search(text string) (string, uint8) {
 }
 
 // 替换文本的关键词
-func (s *Sieve) Replace(text string) (string, map[uint8][]string) {
+func (s *Filter) Replace(text string) (string, map[uint8][]string) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -123,7 +109,7 @@ func (s *Sieve) Replace(text string) (string, map[uint8][]string) {
 }
 
 // 添加关键词，打标签并设定是否强制替换
-func (s *Sieve) add(words []string, tag uint8, autoReplace bool) (fail []string) {
+func (s *Filter) add(words []string, tag uint8, autoReplace bool) (fail []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

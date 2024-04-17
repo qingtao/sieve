@@ -1,4 +1,4 @@
-package sieve
+package filter
 
 import (
 	"strings"
@@ -150,9 +150,7 @@ func (root *node) Search(ws []rune) (start int, end int, tag uint8, autoReplace 
 				break
 			}
 			// 当前未匹配，回退到根节点
-			if node == nil {
-				node = root
-			}
+			node = root
 
 			// 苹方
 			if start >= 0 {
